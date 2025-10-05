@@ -2,7 +2,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Henry Games Sound Studio</title>
+<title>Henry Games Sound Studio 3.0</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -41,9 +41,10 @@
     display: none;
   }
   #controls {
-    margin-top: 80px;
+    margin-top: 60px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     gap: 15px;
   }
   button {
@@ -55,15 +56,15 @@
     cursor: pointer;
     font-size: 1rem;
     transition: 0.2s;
+    width: 180px;
   }
   button:hover {
     background-color: rgba(255,255,255,0.3);
   }
-  #reverse-btn {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+  #record-btn {
+    font-size: 1.4rem;
+    padding: 15px 20px;
+    width: 200px;
   }
   #visualizer {
     width: 100%;
@@ -83,40 +84,44 @@
   <div id="controls">
     <button id="record-btn">🎙️ Kaydet</button>
     <button id="stop-btn">⏹️ Durdur</button>
-    <button id="download-btn">💾 İndir</button>
-  </div>
-  <button id="reverse-btn">🔁 Tersten Oynat</button>  <script>
+    <button id="reverse-btn">🔁 Tersten Oynat</button>
+    <button id="download-btn">💾 WAV İndir</button>
+  </div>  <script>
+    let mediaRecorder, audioChunks = [], audioBuffer, audioBlob, audioUrl;
+    let audioContext, analyser, dataArray, source;
+
     const recordBtn = document.getElementById('record-btn');
     const stopBtn = document.getElementById('stop-btn');
-    const downloadBtn = document.getElementById('download-btn');
     const reverseBtn = document.getElementById('reverse-btn');
+    const downloadBtn = document.getElementById('download-btn');
     const visualizer = document.getElementById('visualizer');
     const canvasCtx = visualizer.getContext('2d');
 
-    let mediaRecorder, audioChunks = [], audioBlob, audioUrl, audio;
-    let audioContext, analyser, dataArray, source;
+    const feedbackSound = new Audio('soundclip.wav');
 
     recordBtn.onclick = async () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunks = [];
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.start();
-
       audioContext = new AudioContext();
       source = audioContext.createMediaStreamSource(stream);
       analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
       dataArray = new Uint8Array(analyser.frequencyBinCount);
-
       drawVisualizer();
 
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const recorder = new MediaRecorder(stream);
+      audioChunks = [];
+      recorder.ondataavailable = e => audioChunks.push(e.data);
+      recorder.onstop = async () => {
+        const blob = new Blob(audioChunks);
+        const arrayBuffer = await blob.arrayBuffer();
+        const buffer = await audioContext.decodeAudioData(arrayBuffer);
+        audioBuffer = buffer;
+        audioBlob = encodeWAV(buffer);
         audioUrl = URL.createObjectURL(audioBlob);
-        audio = new Audio(audioUrl);
       };
+      mediaRecorder = recorder;
+      mediaRecorder.start();
     };
 
     stopBtn.onclick = () => {
@@ -125,27 +130,65 @@
       }
     };
 
+    reverseBtn.onclick = () => {
+      if (!audioBuffer) return;
+      for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+        Array.prototype.reverse.call(audioBuffer.getChannelData(i));
+      }
+      const context = new AudioContext();
+      const source = context.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(context.destination);
+      source.start(0);
+    };
+
     downloadBtn.onclick = () => {
       if (!audioBlob) return;
+      feedbackSound.currentTime = 0;
+      feedbackSound.play();
       const a = document.createElement('a');
       a.href = audioUrl;
-      a.download = 'kayit.webm';
+      a.download = 'kayit.wav';
       a.click();
     };
 
-    reverseBtn.onclick = async () => {
-      if (!audioBlob) return;
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const context = new AudioContext();
-      const buffer = await context.decodeAudioData(arrayBuffer);
-      for (let i = 0; i < buffer.numberOfChannels; i++) {
-        Array.prototype.reverse.call(buffer.getChannelData(i));
+    function encodeWAV(audioBuffer) {
+      const numOfChan = audioBuffer.numberOfChannels;
+      const length = audioBuffer.length * numOfChan * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+
+      writeUTFBytes(view, 0, 'RIFF');
+      view.setUint32(4, 36 + audioBuffer.length * numOfChan * 2, true);
+      writeUTFBytes(view, 8, 'WAVE');
+      writeUTFBytes(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numOfChan, true);
+      view.setUint32(24, audioBuffer.sampleRate, true);
+      view.setUint32(28, audioBuffer.sampleRate * numOfChan * 2, true);
+      view.setUint16(32, numOfChan * 2, true);
+      view.setUint16(34, 16, true);
+      writeUTFBytes(view, 36, 'data');
+      view.setUint32(40, audioBuffer.length * numOfChan * 2, true);
+
+      let offset = 44;
+      for (let i = 0; i < audioBuffer.length; i++) {
+        for (let ch = 0; ch < numOfChan; ch++) {
+          let sample = audioBuffer.getChannelData(ch)[i] * 0x7fff;
+          view.setInt16(offset, sample, true);
+          offset += 2;
+        }
       }
-      const reversedSource = context.createBufferSource();
-      reversedSource.buffer = buffer;
-      reversedSource.connect(context.destination);
-      reversedSource.start(0);
-    };
+
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    function writeUTFBytes(view, offset, string){
+      for (let i = 0; i < string.length; i++){
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
 
     function drawVisualizer() {
       requestAnimationFrame(drawVisualizer);
