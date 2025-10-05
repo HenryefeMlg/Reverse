@@ -2,7 +2,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Henry Games Sound Studio 4.0</title>
+<title>Henry Games Sound Studio - Debug</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -17,209 +17,57 @@
     overflow: hidden;
     transition: background-color 0.3s;
   }
-  h1 {
-    position: absolute;
-    left: 10px;
-    top: 10px;
-    font-size: 1.4rem;
-    font-weight: bold;
-  }
-  #settings-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    font-size: 24px;
-    cursor: pointer;
-  }
-  #settings-panel {
-    position: absolute;
-    top: 45px;
-    right: 10px;
-    background: rgba(0,0,0,0.8);
-    padding: 10px;
-    border-radius: 10px;
-    display: none;
-  }
-  #controls {
-    margin-top: 60px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-  }
-  button {
-    background-color: rgba(255,255,255,0.1);
-    border: 1px solid white;
-    color: white;
-    padding: 10px 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: 0.2s;
-    width: 180px;
-  }
-  button:hover {
-    background-color: rgba(255,255,255,0.3);
-  }
-  #record-btn {
-    font-size: 1.4rem;
-    padding: 15px 20px;
-    width: 200px;
-  }
-  #visualizer {
-    width: 100%;
-    height: 150px;
-    background: rgba(255,255,255,0.05);
-  }
+  h1 { position: absolute; left: 10px; top: 10px; font-size: 1.4rem; font-weight: bold; }
+  #controls { margin-top: 60px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+  button { background-color: rgba(255,255,255,0.1); border: 1px solid white; color: white; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 180px; }
+  button:hover { background-color: rgba(255,255,255,0.3); }
+  #record-btn { font-size: 1.4rem; padding: 15px 20px; width: 200px; }
+  #error-box { position: fixed; top: 50px; left: 50%; transform: translateX(-50%); background: red; color: white; padding: 10px 20px; border-radius: 8px; display: none; z-index: 9999; }
 </style>
 </head>
 <body>
-  <h1>Henry Games</h1>
-  <div id="settings-btn">⚙️</div>
-  <div id="settings-panel">
-    <label>Tema Rengi:</label>
-    <input type="color" id="theme-color-picker" />
-  </div><canvas id="visualizer"></canvas>
+<h1>Henry Games</h1>
+<div id="error-box"></div>
+<div id="controls">
+  <button id="record-btn">🎙️ Kaydet</button>
+  <button id="stop-btn">⏹️ Durdur</button>
+  <button id="reverse-btn">🔁 Tersten Oynat</button>
+  <button id="download-btn">💾 WAV İndir</button>
+</div>
+<script>
+  const errorBox = document.getElementById('error-box');
+  window.onerror = function(message, source, lineno, colno, error) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = `Hata: ${message} (Satır: ${lineno})`;
+      return true;
+  };let mediaStream, mediaRecorder, audioChunks = [], audioBuffer, audioBlob, audioUrl; let audioContext, analyser, dataArray, source;
 
-  <div id="controls">
-    <button id="record-btn">🎙️ Kaydet</button>
-    <button id="stop-btn">⏹️ Durdur</button>
-    <button id="reverse-btn">🔁 Tersten Oynat</button>
-    <button id="download-btn">💾 WAV İndir</button>
-  </div>  <script>
-    let mediaStream, mediaRecorder, audioChunks = [], audioBuffer, audioBlob, audioUrl;
-    let audioContext, analyser, dataArray, source;
+const recordBtn = document.getElementById('record-btn'); const stopBtn = document.getElementById('stop-btn'); const reverseBtn = document.getElementById('reverse-btn'); const downloadBtn = document.getElementById('download-btn'); const feedbackSound = new Audio('soundclip.wav');
 
-    const recordBtn = document.getElementById('record-btn');
-    const stopBtn = document.getElementById('stop-btn');
-    const reverseBtn = document.getElementById('reverse-btn');
-    const downloadBtn = document.getElementById('download-btn');
-    const visualizer = document.getElementById('visualizer');
-    const canvasCtx = visualizer.getContext('2d');
+async function startRecording() { try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true }); audioContext = new AudioContext(); source = audioContext.createMediaStreamSource(mediaStream); analyser = audioContext.createAnalyser(); analyser.fftSize = 256; source.connect(analyser); dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-    const feedbackSound = new Audio('soundclip.wav');
-
-    async function startRecording() {
-      try {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop();
-        }
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioContext = new AudioContext();
-        source = audioContext.createMediaStreamSource(mediaStream);
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        drawVisualizer();
-
-        mediaRecorder = new MediaRecorder(mediaStream);
-        audioChunks = [];
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = async () => {
+mediaRecorder = new MediaRecorder(mediaStream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
           const blob = new Blob(audioChunks);
           const arrayBuffer = await blob.arrayBuffer();
           const buffer = await audioContext.decodeAudioData(arrayBuffer);
           audioBuffer = buffer;
           audioBlob = encodeWAV(buffer);
           audioUrl = URL.createObjectURL(audioBlob);
-        };
-        mediaRecorder.start();
-      } catch (err) {
-        alert('Mikrofon izni alınamadı veya tarayıcı desteklemiyor!');
-      }
-    }
+      };
+      mediaRecorder.start();
+  } catch (err) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Mikrofon izni alınamadı veya tarayıcı desteklemiyor!';
+  }
 
-    recordBtn.onclick = startRecording;
+}
 
-    stopBtn.onclick = () => {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-      }
-    };
+recordBtn.onclick = startRecording; stopBtn.onclick = () => { if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop(); }; reverseBtn.onclick = () => { if(!audioBuffer) return; for(let i=0;i<audioBuffer.numberOfChannels;i++) Array.prototype.reverse.call(audioBuffer.getChannelData(i)); const context = new AudioContext(); const src = context.createBufferSource(); src.buffer = audioBuffer; src.connect(context.destination); src.start(0); }; downloadBtn.onclick = () => { if(!audioBlob) return; feedbackSound.currentTime = 0; feedbackSound.play(); const a = document.createElement('a'); a.href = audioUrl; a.download = 'kayit.wav'; a.click(); };
 
-    reverseBtn.onclick = () => {
-      if (!audioBuffer) return;
-      for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-        Array.prototype.reverse.call(audioBuffer.getChannelData(i));
-      }
-      const context = new AudioContext();
-      const source = context.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(context.destination);
-      source.start(0);
-    };
+function encodeWAV(audioBuffer){ const numOfChan = audioBuffer.numberOfChannels; const length = audioBuffer.lengthnumOfChan2+44; const buffer = new ArrayBuffer(length); const view = new DataView(buffer); writeUTFBytes(view,0,'RIFF'); view.setUint32(4,36+audioBuffer.lengthnumOfChan2,true); writeUTFBytes(view,8,'WAVE'); writeUTFBytes(view,12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,numOfChan,true); view.setUint32(24,audioBuffer.sampleRate,true); view.setUint32(28,audioBuffer.sampleRatenumOfChan2,true); view.setUint16(32,numOfChan2,true); view.setUint16(34,16,true); writeUTFBytes(view,36,'data'); view.setUint32(40,audioBuffer.lengthnumOfChan*2,true); let offset=44; for(let i=0;i<audioBuffer.length;i++){ for(let ch=0;ch<numOfChan;ch++){ let sample=audioBuffer.getChannelData(ch)[i]*0x7fff; view.setInt16(offset,sample,true); offset+=2; } } return new Blob([view],{type:'audio/wav'}); } function writeUTFBytes(view,offset,string){for(let i=0;i<string.length;i++) view.setUint8(offset+i,string.charCodeAt(i));} </script>
 
-    downloadBtn.onclick = () => {
-      if (!audioBlob) return;
-      feedbackSound.currentTime = 0;
-      feedbackSound.play();
-      const a = document.createElement('a');
-      a.href = audioUrl;
-      a.download = 'kayit.wav';
-      a.click();
-    };
-
-    function encodeWAV(audioBuffer) {
-      const numOfChan = audioBuffer.numberOfChannels;
-      const length = audioBuffer.length * numOfChan * 2 + 44;
-      const buffer = new ArrayBuffer(length);
-      const view = new DataView(buffer);
-
-      writeUTFBytes(view, 0, 'RIFF');
-      view.setUint32(4, 36 + audioBuffer.length * numOfChan * 2, true);
-      writeUTFBytes(view, 8, 'WAVE');
-      writeUTFBytes(view, 12, 'fmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, numOfChan, true);
-      view.setUint32(24, audioBuffer.sampleRate, true);
-      view.setUint32(28, audioBuffer.sampleRate * numOfChan * 2, true);
-      view.setUint16(32, numOfChan * 2, true);
-      view.setUint16(34, 16, true);
-      writeUTFBytes(view, 36, 'data');
-      view.setUint32(40, audioBuffer.length * numOfChan * 2, true);
-
-      let offset = 44;
-      for (let i = 0; i < audioBuffer.length; i++) {
-        for (let ch = 0; ch < numOfChan; ch++) {
-          let sample = audioBuffer.getChannelData(ch)[i] * 0x7fff;
-          view.setInt16(offset, sample, true);
-          offset += 2;
-        }
-      }
-
-      return new Blob([view], { type: 'audio/wav' });
-    }
-
-    function writeUTFBytes(view, offset, string){
-      for (let i = 0; i < string.length; i++){
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    }
-
-    function drawVisualizer() {
-      requestAnimationFrame(drawVisualizer);
-      if (!analyser) return;
-      analyser.getByteFrequencyData(dataArray);
-      canvasCtx.fillStyle = 'rgba(0,0,0,0.2)';
-      canvasCtx.fillRect(0,0,visualizer.width,visualizer.height);
-      const barWidth = (visualizer.width / dataArray.length) * 2.5;
-      let x = 0;
-      for(let i=0;i<dataArray.length;i++){
-        const barHeight = dataArray[i];
-        canvasCtx.fillStyle = `rgb(${barHeight+100},50,150)`;
-        canvasCtx.fillRect(x, visualizer.height-barHeight/2, barWidth, barHeight/2);
-        x += barWidth + 1;
-      }
-    }
-
-    const settingsBtn = document.getElementById('settings-btn');
-    const settingsPanel = document.getElementById('settings-panel');
-    const colorPicker = document.getElementById('theme-color-picker');
-
-    settingsBtn.onclick = () => {
-      settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
-    };
-
-    colorPicker.oninput = e => {
+</body>
+</html>
