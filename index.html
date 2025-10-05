@@ -2,7 +2,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Henry Games Sound Studio - Final</title>
+<title>Henry Games Sound Studio - Ayar ve Düzeltmeler</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -23,13 +23,19 @@
   button:hover { background-color: rgba(255,255,255,0.3); }
   #record-btn { font-size: 1.4rem; padding: 15px 20px; width: 200px; }
   #error-box { position: fixed; top: 50px; left: 50%; transform: translateX(-50%); background: red; color: white; padding: 10px 20px; border-radius: 8px; display: none; z-index: 9999; }
-  #theme-picker { position: absolute; top: 10px; right: 10px; }
+  #settings-btn { position: absolute; top: 10px; right: 10px; font-size: 24px; cursor: pointer; }
+  #settings-panel { position: absolute; top: 45px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 10px; display: none; }
+  #theme-picker { display:block; margin-top:10px; }
   #visualizer { width: 90%; height: 100px; background: rgba(255,255,255,0.05); margin-top: 20px; }
 </style>
 </head>
 <body>
 <h1>Henry Games</h1>
-<input type="color" id="theme-picker" title="Tema Rengi" />
+<div id="settings-btn">⚙️</div>
+<div id="settings-panel">
+  <label>Tema Rengi:</label>
+  <input type="color" id="theme-picker" />
+</div>
 <div id="error-box"></div>
 <canvas id="visualizer"></canvas>
 <div id="controls">
@@ -46,7 +52,9 @@ window.onerror = function(message, source, lineno, colno, error) {
     return true;
 };let mediaStream, mediaRecorder, audioChunks = [], audioBuffer, audioBlob, audioUrl; let audioContext, analyser, dataArray, sourceNode;
 
-const recordBtn = document.getElementById('record-btn'); const stopBtn = document.getElementById('stop-btn'); const reverseBtn = document.getElementById('reverse-btn'); const downloadBtn = document.getElementById('download-btn'); const visualizer = document.getElementById('visualizer'); const canvasCtx = visualizer.getContext('2d'); const feedbackSound = new Audio('soundclip.wav'); const themePicker = document.getElementById('theme-picker');
+const recordBtn = document.getElementById('record-btn'); const stopBtn = document.getElementById('stop-btn'); const reverseBtn = document.getElementById('reverse-btn'); const downloadBtn = document.getElementById('download-btn'); const visualizer = document.getElementById('visualizer'); const canvasCtx = visualizer.getContext('2d'); const feedbackSound = new Audio('soundclip.wav'); const themePicker = document.getElementById('theme-picker'); const settingsBtn = document.getElementById('settings-btn'); const settingsPanel = document.getElementById('settings-panel');
+
+settingsBtn.onclick = () => { settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none'; };
 
 // Tema ayarlarını yükle const savedColor = localStorage.getItem('themeColor'); if(savedColor){ document.body.style.setProperty('--theme-color', savedColor); themePicker.value = savedColor; }
 
@@ -73,11 +81,10 @@ mediaRecorder = new MediaRecorder(mediaStream);
 
 }
 
-recordBtn.onclick = startRecording; stopBtn.onclick = ()=>{ if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop(); }; reverseBtn.onclick = ()=>{ if(!audioBuffer) return; for(let i=0;i<audioBuffer.numberOfChannels;i++) Array.prototype.reverse.call(audioBuffer.getChannelData(i)); const context = new AudioContext(); const src = context.createBufferSource(); src.buffer = audioBuffer; src.connect(context.destination); src.start(0); }; downloadBtn.onclick = ()=>{ if(!audioBlob) return; feedbackSound.currentTime=0; feedbackSound.play(); const a=document.createElement('a'); a.href=audioUrl; a.download='kayit.wav'; a.click(); };
+recordBtn.onclick = startRecording; stopBtn.onclick = ()=>{ if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop(); }; reverseBtn.onclick = ()=>{ if(!audioBuffer) return; for(let i=0;i<audioBuffer.numberOfChannels;i++) Array.prototype.reverse.call(audioBuffer.getChannelData(i)); const context = new AudioContext(); const src = context.createBufferSource(); src.buffer = audioBuffer; src.connect(context.destination); src.start(0); }; downloadBtn.onclick = ()=>{ if(!audioBlob) return; feedbackSound.currentTime=0; feedbackSound.play(); const a=document.createElement('a'); a.href=audioUrl; a.download='Recording.wav'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
 
 function encodeWAV(audioBuffer){ const numOfChan = audioBuffer.numberOfChannels; const length = audioBuffer.lengthnumOfChan2+44; const buffer = new ArrayBuffer(length); const view = new DataView(buffer); writeUTFBytes(view,0,'RIFF'); view.setUint32(4,36+audioBuffer.lengthnumOfChan2,true); writeUTFBytes(view,8,'WAVE'); writeUTFBytes(view,12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,numOfChan,true); view.setUint32(24,audioBuffer.sampleRate,true); view.setUint32(28,audioBuffer.sampleRatenumOfChan2,true); view.setUint16(32,numOfChan2,true); view.setUint16(34,16,true); writeUTFBytes(view,36,'data'); view.setUint32(40,audioBuffer.lengthnumOfChan*2,true); let offset=44; for(let i=0;i<audioBuffer.length;i++){ for(let ch=0;ch<numOfChan;ch++){ let sample=audioBuffer.getChannelData(ch)[i]*0x7fff; view.setInt16(offset,sample,true); offset+=2; } } return new Blob([view],{type:'audio/wav'}); } function writeUTFBytes(view,offset,string){for(let i=0;i<string.length;i++) view.setUint8(offset+i,string.charCodeAt(i));}
 
-function drawVisualizer(){ requestAnimationFrame(drawVisualizer); if(!analyser) return; analyser.getByteTimeDomainData(dataArray); canvasCtx.fillStyle='rgba(0,0,0,0.2)'; canvasCtx.fillRect(0,0,visualizer.width,visualizer.height); canvasCtx.beginPath(); canvasCtx.strokeStyle='lime'; canvasCtx.lineWidth=2; const sliceWidth = visualizer.width / dataArray.length; let x=0; for(let i=0;i<dataArray.length;i++){ const v = dataArray[i]/128.0; const y = v * visualizer.height/2; if(i===0) canvasCtx.moveTo(x,y); else canvasCtx.lineTo(x,y); x += sliceWidth; } canvasCtx.stroke(); } </script>
+function drawVisualizer(){ requestAnimationFrame(drawVisualizer); if(!analyser) return; analyser.getByteTimeDomainData(dataArray); canvasCtx.fillStyle='rgba(0,0,0,0.2)'; canvasCtx.fillRect(0,0,visualizer.width,visualizer.height); canvasCtx.beginPath(); canvasCtx.strokeStyle='lime'; canvasCtx.lineWidth=2; const sliceWidth = visualizer.width / dataArray.length; let x=0; for(let i=0;i<dataArray.length;i++){ const v = dataArray[i]/128.0; const y = v * visualizer.height/2; if(i===0) canvasCtx.moveTo(x,y
 
-</body>
-</html>
+  
