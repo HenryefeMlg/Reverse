@@ -1,219 +1,185 @@
-<!doctype html>
-
-<html lang="tr">
+<!DOCTYPE html><html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Henry Games - Ses Kaydedici</title>
-  <style>
-    :root{
-      --bg:#0f1724;
-      --card:#0b1220;
-      --accent:#7dd3fc;
-      --muted:#94a3b8;
-    }
-    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
-    body{background:var(--bg);color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:24px;transition:background 0.3s}
-    .app{width:900px;max-width:100%;background:rgba(255,255,255,0.02);border-radius:12px;padding:20px;box-shadow:0 6px 30px rgba(2,6,23,0.6)}
-    header{display:flex;align-items:center;gap:12px;justify-content:space-between}.brand{position:fixed;left:18px;top:14px;font-weight:600;font-size:20px;}
-.settings{position:fixed;right:18px;top:14px;cursor:pointer;font-size:22px;user-select:none;}
-.settings-panel{position:fixed;right:18px;top:50px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;display:none;flex-direction:column;gap:8px;z-index:10}
-.settings-panel input[type=color]{width:100%;height:36px;border:none;border-radius:6px;cursor:pointer;background:transparent}
-
-h1{margin:0;font-size:18px}
-.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-button{background:transparent;border:1px solid rgba(255,255,255,0.08);padding:10px 14px;border-radius:10px;color:inherit;cursor:pointer}
-button.primary{border-color:var(--accent);}
-button:disabled{opacity:.4;cursor:not-allowed}
-.status{margin-left:8px;font-size:13px;color:var(--muted)}
-.rec-dot{width:12px;height:12px;border-radius:50%;background:#ef4444;box-shadow:0 0 10px rgba(239,68,68,0.6);display:inline-block;vertical-align:middle;margin-right:8px}
-
-.vis{margin-top:18px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:8px}
-canvas{width:100%;height:80px;display:block}
-footer{margin-top:16px;font-size:13px;color:var(--muted)}
-
-@media (max-width:640px){.brand{left:12px;top:8px;font-size:16px}.settings{right:12px;top:8px}}
-
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Henry Games Sound Studio</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: var(--theme-color, #222);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100vh;
+    overflow: hidden;
+    transition: background-color 0.3s;
+  }
+  h1 {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    font-size: 1.4rem;
+    font-weight: bold;
+  }
+  #settings-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  #settings-panel {
+    position: absolute;
+    top: 45px;
+    right: 10px;
+    background: rgba(0,0,0,0.8);
+    padding: 10px;
+    border-radius: 10px;
+    display: none;
+  }
+  #controls {
+    margin-top: 80px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+  }
+  button {
+    background-color: rgba(255,255,255,0.1);
+    border: 1px solid white;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.2s;
+  }
+  button:hover {
+    background-color: rgba(255,255,255,0.3);
+  }
+  #reverse-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  #visualizer {
+    width: 100%;
+    height: 150px;
+    background: rgba(255,255,255,0.05);
+  }
+</style>
 </head>
 <body>
-  <div class="brand">Henry Games</div>
-  <div class="settings" id="settingsBtn">⚙️</div>
-  <div class="settings-panel" id="settingsPanel">
-    <label for="colorPicker">Tema rengi:</label>
-    <input type="color" id="colorPicker" value="#0f1724">
-  </div>  <div class="app">
-    <header>
-      <div>
-        <h1>Ses Kaydedici — Kaydet, Çal, Tersten Çal</h1>
-        <div class="status" id="statusText">Hazır. Mikrofon erişimi gerekebilir.</div>
-      </div>
-    </header><div class="controls">
-  <button id="recordBtn" class="primary">Kaydet</button>
-  <button id="stopBtn" disabled>Durdur</button>
-  <button id="playBtn" disabled>Çal</button>
-  <button id="playReverseBtn" disabled>Tersten Çal</button>
-  <button id="downloadBtn" disabled>İndir</button>
-</div>
+  <h1>Henry Games</h1>
+  <div id="settings-btn">⚙️</div>
+  <div id="settings-panel">
+    <label>Tema Rengi:</label>
+    <input type="color" id="theme-color-picker" />
+  </div><canvas id="visualizer"></canvas>
 
-<div class="vis">
-  <div id="recIndicator"></div>
-  <canvas id="wave" width="800" height="80"></canvas>
-</div>
+  <div id="controls">
+    <button id="record-btn">🎙️ Kaydet</button>
+    <button id="stop-btn">⏹️ Durdur</button>
+    <button id="download-btn">💾 İndir</button>
+  </div>
+  <button id="reverse-btn">🔁 Tersten Oynat</button>  <script>
+    const recordBtn = document.getElementById('record-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const reverseBtn = document.getElementById('reverse-btn');
+    const visualizer = document.getElementById('visualizer');
+    const canvasCtx = visualizer.getContext('2d');
 
-<footer>
-  Notlar: Tarayıcı izin vermezse mikrofon çalışmaz. En iyi sonuç için Chrome/Firefox kullanın.
-</footer>
+    let mediaRecorder, audioChunks = [], audioBlob, audioUrl, audio;
+    let audioContext, analyser, dataArray, source;
 
-  </div>  <script>
-    const recordBtn = document.getElementById('recordBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const playBtn = document.getElementById('playBtn');
-    const playReverseBtn = document.getElementById('playReverseBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const statusText = document.getElementById('statusText');
-    const recIndicator = document.getElementById('recIndicator');
-    const canvas = document.getElementById('wave');
-    const ctx = canvas.getContext('2d');
+    recordBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start();
 
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let recordingBlob = null;
-    let audioBuffer = null;
-    let audioContext = null;
+      audioContext = new AudioContext();
+      source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-    function setStatus(txt){statusText.textContent = txt}
+      drawVisualizer();
 
-    async function ensureAudioContext(){
-      if(!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      return audioContext;
-    }
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        audioUrl = URL.createObjectURL(audioBlob);
+        audio = new Audio(audioUrl);
+      };
+    };
 
-    function drawSilhouette(data){
-      const w = canvas.width; const h = canvas.height; ctx.clearRect(0,0,w,h);
-      ctx.beginPath(); ctx.moveTo(0,h/2);
-      const step = Math.max(1, Math.floor(data.length / w));
-      for(let i=0, x=0; i<data.length; i+=step, x++){
-        const v = data[i]; const y = (1 - v) * (h/2);
-        ctx.lineTo(x,y);
-      }
-      ctx.strokeStyle = 'rgba(125,211,252,0.9)'; ctx.lineWidth = 1.6; ctx.stroke();
-    }
-
-    recordBtn.addEventListener('click', async ()=>{
-      try{
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-        mediaRecorder.ondataavailable = e => { if(e.data && e.data.size>0) audioChunks.push(e.data); };
-        mediaRecorder.onstart = ()=>{
-          setStatus('Kayıt: aktif');
-          recIndicator.innerHTML = '<span class="rec-dot"></span> Kayıt yapılıyor...';
-          recordBtn.disabled = true; stopBtn.disabled = false; playBtn.disabled = true; playReverseBtn.disabled = true; downloadBtn.disabled = true;
-        }
-        mediaRecorder.onstop = async ()=>{
-          recordingBlob = new Blob(audioChunks, { type: audioChunks[0]?.type || 'audio/webm' });
-          setStatus('Kayıt durdu. Ses çözümleniyor...');
-          recIndicator.innerHTML = '';
-          await decodeRecording();
-        }
-        mediaRecorder.start();
-      }catch(err){
-        console.error(err); setStatus('Mikrofona erişilemedi: ' + err.message);
-      }
-    });
-
-    stopBtn.addEventListener('click', ()=>{
-      if(mediaRecorder && mediaRecorder.state === 'recording'){
+    stopBtn.onclick = () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(t=>t.stop());
-        recordBtn.disabled = false; stopBtn.disabled = true;
       }
-    });
+    };
 
-    async function decodeRecording(){
-      if(!recordingBlob) return;
-      const arr = await recordingBlob.arrayBuffer();
-      await ensureAudioContext();
-      try{
-        audioBuffer = await audioContext.decodeAudioData(arr.slice(0));
-        setStatus('Ses çözümlandı. Uzunluk: ' + Math.round(audioBuffer.duration*1000)/1000 + ' s');
-        playBtn.disabled = false; playReverseBtn.disabled = false; downloadBtn.disabled = false;
-        const channelData = audioBuffer.numberOfChannels ? audioBuffer.getChannelData(0) : new Float32Array();
-        drawSilhouette(channelData);
-      }catch(err){
-        console.error(err); setStatus('Ses çözümlenirken hata: ' + err.message);
-      }
-    }
-
-    function playBuffer(buffer){
-      if(!buffer) return;
-      const src = audioContext.createBufferSource();
-      src.buffer = buffer;
-      src.connect(audioContext.destination);
-      src.start(0);
-      src.onended = ()=> setStatus('Çalma bitti.');
-      setStatus('Çalıyor...');
-    }
-
-    playBtn.addEventListener('click', async ()=>{
-      if(!audioBuffer) return;
-      await ensureAudioContext();
-      playBuffer(audioBuffer);
-    });
-
-    playReverseBtn.addEventListener('click', async ()=>{
-      if(!audioBuffer) return;
-      await ensureAudioContext();
-      const numCh = audioBuffer.numberOfChannels;
-      const len = audioBuffer.length;
-      const sampleRate = audioBuffer.sampleRate;
-      const revBuffer = audioContext.createBuffer(numCh, len, sampleRate);
-      for(let ch=0; ch<numCh; ch++){
-        const data = audioBuffer.getChannelData(ch);
-        const rev = revBuffer.getChannelData(ch);
-        for(let i=0;i<len;i++) rev[i] = data[len-1-i];
-      }
-      drawSilhouette(revBuffer.getChannelData(0));
-      playBuffer(revBuffer);
-    });
-
-    downloadBtn.addEventListener('click', ()=>{
-      if(!recordingBlob) return;
+    downloadBtn.onclick = () => {
+      if (!audioBlob) return;
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(recordingBlob);
-      a.download = 'kayit.' + (recordingBlob.type?.split('/')[1] || 'webm');
+      a.href = audioUrl;
+      a.download = 'kayit.webm';
       a.click();
-      setStatus('İndirme başlatıldı.');
-    });
+    };
 
-    // Tema sistemi
-    const settingsBtn = document.getElementById('settingsBtn');
-    const settingsPanel = document.getElementById('settingsPanel');
-    const colorPicker = document.getElementById('colorPicker');
+    reverseBtn.onclick = async () => {
+      if (!audioBlob) return;
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const context = new AudioContext();
+      const buffer = await context.decodeAudioData(arrayBuffer);
+      for (let i = 0; i < buffer.numberOfChannels; i++) {
+        Array.prototype.reverse.call(buffer.getChannelData(i));
+      }
+      const reversedSource = context.createBufferSource();
+      reversedSource.buffer = buffer;
+      reversedSource.connect(context.destination);
+      reversedSource.start(0);
+    };
+
+    function drawVisualizer() {
+      requestAnimationFrame(drawVisualizer);
+      if (!analyser) return;
+      analyser.getByteFrequencyData(dataArray);
+      canvasCtx.fillStyle = 'rgba(0,0,0,0.2)';
+      canvasCtx.fillRect(0,0,visualizer.width,visualizer.height);
+      const barWidth = (visualizer.width / dataArray.length) * 2.5;
+      let x = 0;
+      for(let i=0;i<dataArray.length;i++){
+        const barHeight = dataArray[i];
+        canvasCtx.fillStyle = `rgb(${barHeight+100},50,150)`;
+        canvasCtx.fillRect(x, visualizer.height-barHeight/2, barWidth, barHeight/2);
+        x += barWidth + 1;
+      }
+    }
+
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const colorPicker = document.getElementById('theme-color-picker');
+
+    settingsBtn.onclick = () => {
+      settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+    };
+
+    colorPicker.oninput = e => {
+      document.body.style.setProperty('--theme-color', e.target.value);
+      localStorage.setItem('themeColor', e.target.value);
+    };
 
     const savedColor = localStorage.getItem('themeColor');
-    if(savedColor){
-      document.body.style.background = savedColor;
-      colorPicker.value = rgbToHex(savedColor);
+    if (savedColor) {
+      document.body.style.setProperty('--theme-color', savedColor);
+      colorPicker.value = savedColor;
     }
-
-    settingsBtn.addEventListener('click', ()=>{
-      settingsPanel.style.display = settingsPanel.style.display === 'flex' ? 'none' : 'flex';
-    });
-
-    colorPicker.addEventListener('input', e => {
-      const color = e.target.value;
-      document.body.style.background = color;
-      localStorage.setItem('themeColor', color);
-    });
-
-    function rgbToHex(rgb){
-      const ctx = document.createElement('canvas').getContext('2d');
-      ctx.fillStyle = rgb;
-      return ctx.fillStyle;
-    }
-
-    window.addEventListener('unload', ()=>{ if(audioContext) audioContext.close(); });
   </script></body>
 </html>
