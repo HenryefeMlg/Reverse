@@ -2,7 +2,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Henry Games Sound Studio 3.0</title>
+<title>Henry Games Sound Studio 4.0</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -87,7 +87,7 @@
     <button id="reverse-btn">🔁 Tersten Oynat</button>
     <button id="download-btn">💾 WAV İndir</button>
   </div>  <script>
-    let mediaRecorder, audioChunks = [], audioBuffer, audioBlob, audioUrl;
+    let mediaStream, mediaRecorder, audioChunks = [], audioBuffer, audioBlob, audioUrl;
     let audioContext, analyser, dataArray, source;
 
     const recordBtn = document.getElementById('record-btn');
@@ -99,30 +99,38 @@
 
     const feedbackSound = new Audio('soundclip.wav');
 
-    recordBtn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioContext = new AudioContext();
-      source = audioContext.createMediaStreamSource(stream);
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      dataArray = new Uint8Array(analyser.frequencyBinCount);
-      drawVisualizer();
+    async function startRecording() {
+      try {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new AudioContext();
+        source = audioContext.createMediaStreamSource(mediaStream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        drawVisualizer();
 
-      const recorder = new MediaRecorder(stream);
-      audioChunks = [];
-      recorder.ondataavailable = e => audioChunks.push(e.data);
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunks);
-        const arrayBuffer = await blob.arrayBuffer();
-        const buffer = await audioContext.decodeAudioData(arrayBuffer);
-        audioBuffer = buffer;
-        audioBlob = encodeWAV(buffer);
-        audioUrl = URL.createObjectURL(audioBlob);
-      };
-      mediaRecorder = recorder;
-      mediaRecorder.start();
-    };
+        mediaRecorder = new MediaRecorder(mediaStream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(audioChunks);
+          const arrayBuffer = await blob.arrayBuffer();
+          const buffer = await audioContext.decodeAudioData(arrayBuffer);
+          audioBuffer = buffer;
+          audioBlob = encodeWAV(buffer);
+          audioUrl = URL.createObjectURL(audioBlob);
+        };
+        mediaRecorder.start();
+      } catch (err) {
+        alert('Mikrofon izni alınamadı veya tarayıcı desteklemiyor!');
+      }
+    }
+
+    recordBtn.onclick = startRecording;
 
     stopBtn.onclick = () => {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -215,14 +223,3 @@
     };
 
     colorPicker.oninput = e => {
-      document.body.style.setProperty('--theme-color', e.target.value);
-      localStorage.setItem('themeColor', e.target.value);
-    };
-
-    const savedColor = localStorage.getItem('themeColor');
-    if (savedColor) {
-      document.body.style.setProperty('--theme-color', savedColor);
-      colorPicker.value = savedColor;
-    }
-  </script></body>
-</html>
